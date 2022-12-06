@@ -5,7 +5,8 @@ const salarioSchema = new mongoose.Schema(
         id: {type: String},
         salarioBruto: {type: Number},
         dataDeCalculo: {type: Date, default: Date.now},
-        descontos: {type: Number},
+        totalDescontos: {type: Number},
+        outrosDescontos: {type: Number, default: 0},
         salarioLiquido: {type: Number}
     },
     {
