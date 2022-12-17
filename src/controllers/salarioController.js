@@ -1,128 +1,68 @@
 import salarios from "../models/Salario.js";
-
+import SubtrairINSS from "../calc/inss.js";
+import SubtrairIRPF from "../calc/irpf.js";
+import SubtrairDescontos from "../calc/descontos.js";
+import Dependente from "../calc/dependente.js";
 class SalarioController {
 
+    //metodo para calcular o salário liquido
     static calcularSalarioLiquido = (req, res) => {
+        let salarioL = 0
+
+        //obtem dos dados do body
         let salario = new salarios(req.body);
-        salario.save((err) => {
-            if(err) {
-                res.status(500).send({message: `${err.message} - falha ao calcular`})
-            } else {
 
+        //realiza o cálculo do INSS
+        const inss = SubtrairINSS(salario.salarioBruto)
+        salarioL = inss.salarioLiquido
 
+        //realiza o cálculo de dependentes
+        const dependente = Dependente(salario.salarioBruto, salario.dependentes)
+        let salarioTotalizado = dependente.salario - inss.totalDesconto
 
-let salarioFinal = 0
-let descontoFinal = 0
+        //realiza o calculo do IRPF
+        const irpf = SubtrairIRPF(salarioTotalizado)
+        salarioL = salario.salarioBruto - irpf.totalDesconto - inss.totalDesconto
 
+        //realiza o calculo de descontos informados pelo usuário
+        const descontos = SubtrairDescontos(salarioL, salario.outrosDescontos)
+        salario.salarioLiquido = descontos.salarioComDesconto
+        salario.totalDescontos = salario.outrosDescontos + inss.totalDesconto + irpf.totalDesconto
 
-                if(salario.salarioBruto <= 1212) {
-                    let valorDesconto = salario.salarioBruto
-                    valorDesconto = (7.5 / 100) * salario.salarioBruto
-                    salario.salarioLiquido = salario.salarioBruto - valorDesconto
-
-                    salarioFinal = salario.salarioLiquido
-                    descontoFinal = valorDesconto
-                
-                } else if (salario.salarioBruto >= 1212.01 && salario.salarioBruto <= 2427.35) {
-
-
-                    let valorDesconto = salario.salarioBruto
-                    valorDesconto = (9 / 100) * salario.salarioBruto
-                    salario.salarioLiquido = salario.salarioBruto - valorDesconto
-                    salarioFinal = salario.salarioLiquido
-                    descontoFinal = valorDesconto
-                } else if (salario.salarioBruto >= 2427.36 && salario.salarioBruto <= 3641.03) {
-
-                    let valorDesconto = salario.salarioBruto
-                    valorDesconto = (12 / 100) * salario.salarioBruto
-                    salario.salarioLiquido = salario.salarioBruto - valorDesconto
-                    salarioFinal = salario.salarioLiquido
-                    descontoFinal = valorDesconto
-                } else if (salario.salarioBruto >= 3641.04 && salario.salarioBruto <= 7087.22) {
-
-                    let valorDesconto = salario.salarioBruto
-                    valorDesconto = (14 / 100) * salario.salarioBruto
-                    salario.salarioLiquido = salario.salarioBruto - valorDesconto
-                    salarioFinal = salario.salarioLiquido
-                    descontoFinal = valorDesconto
-                } else if (salario.salarioBruto >= 7087.23) {
-
-
-                    let valorDesconto = salario.salarioBruto
-                    valorDesconto = (14 / 100) * salario.salarioBruto
-                    salario.salarioLiquido = salario.salarioBruto - valorDesconto
-                    salarioFinal = salario.salarioLiquido
-                    descontoFinal = valorDesconto
+            //salva os dados no banco de dados, e retorna o resultado em json
+            salario.save((err) => {
+                if (err) {
+                    res.status(500).send({
+                        message: `${err.message} - falha ao calcular`
+                    })
                 } else {
-                    console.log("erro")
-                }
-
-                
-                if(salario.salarioBruto <= 1903.98	) {
-
-                
-                    salario.salarioLiquido = salario.salarioBruto - descontoFinal
                     res.status(201).send({
-                        salarioLiquido: salario.salarioLiquido
-                    })
-
-
-
-                } else if (salario.salarioBruto >= 1903.99 && salario.salarioBruto <= 2826.55) {
-                    
-                    let valorDesconto = salario.salarioBruto
-                    valorDesconto = (7.5 / 100) * salario.salarioBruto
-                    salario.salarioLiquido = salario.salarioBruto - valorDesconto - descontoFinal - salario.outrosDescontos
-                    res.status(201).send({
-                        salarioLiquido: salario.salarioLiquido
-                    })
-
-
-                } else if (salario.salarioBruto >= 2826.66 && salario.salarioBruto <= 3751.05) {
-
-                    let valorDesconto = salario.salarioBruto
-                    valorDesconto = (15 / 100) * salario.salarioBruto
-                    salario.salarioLiquido = salario.salarioBruto - valorDesconto - descontoFinal - salario.outrosDescontos
-                    res.status(201).send({
-                        salarioLiquido: salario.salarioLiquido
-                    })
-
-
-                } else if (salario.salarioBruto >= 3751.06 && salario.salarioBruto <= 4664.68) {
-
-
-                    let valorDesconto = salario.salarioBruto
-                    valorDesconto = (22.50 / 100) * salario.salarioBruto
-                    salario.salarioLiquido = salario.salarioBruto - valorDesconto - descontoFinal- salario.outrosDescontos
-                    res.status(201).send({
-                        salarioLiquido: salario.salarioLiquido
-                    })
-
-                } else if (salario.salarioBruto >= 4664.69) {
-
-
-                    let valorDesconto = salario.salarioBruto
-                    valorDesconto = (27.50 / 100) * salario.salarioBruto
-                    salario.salarioLiquido = salario.salarioBruto - valorDesconto - descontoFinal- salario.outrosDescontos
-                    res.status(201).send({
-
                         id: salario._id,
                         salarioBruto: salario.salarioBruto,
                         dataDeCalculo: salario.dataDeCalculo,
+                        salarioLiquido: descontos.salarioComDesconto,
+                        dependentes: salario.dependentes,
+                        aliquotaINSS: inss.aliquota,
+                        aliquotaIRPF: irpf.aliquota,
+                        descontoINSS: inss.totalDesconto,
+                        descontoIRPF: irpf.totalDesconto,
                         outrosDescontos: salario.outrosDescontos,
-                        totalDescontos: valorDesconto + descontoFinal,
-                        salarioLiquido: salario.salarioLiquido
+                        totalDescontos: salario.outrosDescontos + inss.totalDesconto + irpf.totalDesconto,
+                        profissao: salario.profissao
                     })
-
                 }
-
-
-
-                // res.status(201).send(salario.toJSON())
-            }
-        })
+            })
     }
-
+    
+    //metodo para exibir todos os salários
+    static exibirSalarios = (req, res) => {
+        salarios.find({}).sort({
+                dataDeCalculo: -1
+            })
+            .then(dados => {
+                res.send(dados)
+            })
+    }
 }
 
 export default SalarioController
